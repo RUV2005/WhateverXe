@@ -9227,7 +9227,13 @@ void XE::adlnSetDualClock(IOService *controller,uint64_t nativeHz) {
         if(ready) {
             evidence[7]=reinterpret_cast<bool (*)(const IOWorkLoop *)>(callbackXE->adlnWorkLoopInGate)(loop);
             if(!evidence[7]) {
-                ready=reinterpret_cast<bool (*)(IOWorkLoop *)>(callbackXE->adlnWorkLoopTryClose)(loop);
+                unsigned tries=0;
+                for(;;) {
+                    ready=reinterpret_cast<bool (*)(IOWorkLoop *)>(callbackXE->adlnWorkLoopTryClose)(loop);
+                    if(ready || tries>=50)break;
+                    ++tries;IOLockUnlock(c.lock);IOSleep(1);IOLockLock(c.lock);
+                }
+                evidence[27]=tries;
                 if(ready) {acquired=loop;evidence[8]=1;}
             }
         }
